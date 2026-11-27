@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Weather Bricks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div class="brand-text">Databricks Academy</div>
+      </div>
+
+      <h1>Weather Bricks</h1>
+      <p class="lede">
+        Clear skies with a 100% chance of better data insights.
+      </p>
+    </section>
+
+    <section class="card">
+      <form id="weather-form" class="lookup">
+        <label for="city">City</label>
+        <div class="lookup-row">
+          <input
+            id="city"
+            name="city"
+            type="text"
+            placeholder="e.g., Boston, Dallas, Las Vegas"
+            required
+          >
+          <button type="submit">
+            Get Conditions
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section id="result" class="result hidden"></section>
+
+    <footer class="footnote">
+      Weather data: <a href="https://www.weather.gov" rel="noopener">National Weather Service</a>
+      &middot;
+      Geocoding data &copy; <a href="https://www.geonames.org" rel="noopener">GeoNames</a>
+      (<a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC&nbsp;BY&nbsp;4.0</a>)
+    </footer>
+  </main>
+
+  <script>
+    const form = document.querySelector("#weather-form");
+    const result = document.querySelector("#result");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const city = document.querySelector("#city").value.trim();
+      if (!city) return;
+
+      result.className = "result card";
+      result.innerHTML = `<p class="muted">Loading current conditions...</p>`;
+
+      try {
+        const response = await fetch(`/api/weather/conditions?city=${encodeURIComponent(city)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          result.innerHTML = `<p class="error">${data.error || "Weather lookup failed."}</p>`;
+          return;
+        }
+
+        const tempUnit = data.temperature_unit || "";
+        const windUnit = data.wind_unit || "";
+
+        const tempBlock = data.temperature != null
+          ? `<div class="temperature">${data.temperature}${tempUnit}</div>`
+          : "";
+        const conditionBlock = data.condition
+          ? `<p class="condition">${data.condition}</p>`
+          : "";
+        const chips = [
+          data.feels_like != null ? `<span>Feels like ${data.feels_like}${tempUnit}</span>` : "",
+          data.humidity   != null ? `<span>Humidity ${data.humidity}%</span>` : "",
+          data.wind_speed != null ? `<span>Wind ${data.wind_speed} ${windUnit}</span>` : "",
+        ].filter(Boolean).join("");
+        const metricsBlock = chips ? `<div class="metrics">${chips}</div>` : "";
+
+        result.innerHTML = `
+          <div class="weather-layout">
+            ${data.icon_url ? `<img class="weather-icon" src="${data.icon_url}" alt="">` : ""}
+            <div>
+              <p class="eyebrow">${data.source}</p>
+              <h2>${data.location}</h2>
+              ${tempBlock}
+              ${conditionBlock}
+              ${metricsBlock}
+            </div>
+          </div>
+        `;
+      } catch (error) {
+        result.innerHTML = `<p class="error">Weather service is unreachable. Please try again.</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
